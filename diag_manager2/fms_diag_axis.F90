@@ -1,7 +1,14 @@
 module fms_diag_axis_mod
 
-use fms_diag_data_mod, only: diag_error, fatal, note, warning
-use fms2_io_mod
+use fms_diag_data_mod,   only: &
+     diag_error, fatal, note, warning
+use mpp_domains_mod,     only: &
+     domainUG, domain1d, domain2d, mpp_get_compute_domain,&
+     mpp_get_domain_components, null_domain1d, null_domain2d, null_domainUG,&
+     NORTH, EAST, CENTER, &
+     OPERATOR(.NE.), mpp_get_global_domain, mpp_get_domain_name
+use fms2_io_mod,         only: &
+     
 
 type domain1d
  integer :: filler
