@@ -8,17 +8,12 @@ use mpp_domains_mod,     only: &
      NORTH, EAST, CENTER, &
      OPERATOR(.NE.), mpp_get_global_domain, mpp_get_domain_name
 use fms2_io_mod,         only: &
-     
+     unlimited, FmsNetcdfFile_t, FmsNetcdfDomainFile_t, FmsNetcdfUnstructuredDomainFile_t, &
+     register_axis, register_field, write_data, get_variable_attribute, variable_att_exists, &
+     dimension_exists, is_dimension_unlimited, get_dimension_size, get_variable_dimension_names, &
+     file_exists, set_fileobj_time_name, check_if_open
 
-type domain1d
- integer :: filler
-end type domain1d
-type domain2d
- integer :: filler
-end type domain2d
-type domainUG
- integer :: filler
-end type domainUG
+public
 
 type diag_axis_type
      integer :: id       !< The axis ID
@@ -43,7 +38,7 @@ type diag_axis_type
      logical, allocatable :: initialized
 
 contains
-    procedure :: send_data => send_axis_data
+    procedure :: register => register_diag_axis
 
 end type diag_axis_type
 
@@ -305,29 +300,29 @@ end function get_axis_set_num
 !! TODO : Other file types besides FmsNetcdfFile_t
 !! REFERENCE: See functions diag_util.F90::opening_file and diag_output.F90::write_axis_meta_data
 !!   and write_field_meta_data
-subroutine send_axis_data(this, fobj, varname)
+subroutine register_diag_axis(this, fobj, varname)
     class(diag_axis_type),   intent(inout)  :: this
     class(FmsNetcdfFile_t),  intent(inout)  :: fobj
     character(len=*),   intent(in)          :: varname
     !!class(FmsNetcdfFile_t), pointer    :: fptr
 
     if( is_metadata_written(this, fobj) == .false.) then
-         call send_metadata(this, fobj, varname)
+         call write_diag_axis_metadata(this, fobj, varname)
          call set_metadata_written (this, fobj, .true.)
     end if
 
     select type (fptr => fobj) !! Also check X or Y axis
         type is (FmsNetcdfUnstructuredDomainFile_t)
-            call send_data_ncd_udft(this, fptr)
+            call write_diag_axis_data_ncd_udft(this, fptr)
         type is (FmsNetcdfDomainFile_t)
-            call send_data_ncd_dft(this, fptr)
+            call write_diag_axis_data_ncd_dft(this, fptr)
         class default
 
     end select
-end subroutine send_axis_data
+end subroutine register_diag_axis
 
 !> \brief This routine calls fms_io2 to register and write axis data.
-subroutine send_data_ncd_common(axis, fobj)
+subroutine write_diag_axis_data_ncd_common(axis, fobj)
     class(diag_axis_type),   intent(inout)   :: axis
     class(FmsNetcdfFile_t),  intent(inout)   :: fobj
 
@@ -345,33 +340,33 @@ subroutine send_data_ncd_common(axis, fobj)
         case (-1)
             call register_variable_attribute(fobj, axis%aname, "positive", "down")
         case default
-             call diag_error("fns_diag_axis_mod::send_data_ncd_common", &
+             call diag_error("fns_diag_axis_mod::write_diag_axis_data_ncd_common", &
                    "axis_direction should be 1 or -1", FATAL)
     end select
     call write_data(fobj, axis%aname, axis%adata)
-end subroutine send_data_ncd_common
+end subroutine write_diag_axis_data_ncd_common
 
 
 !> \brief This routine registers and write axis data
 !! to file object of type FmsNetcdfDomainFile_t.
-!! Note: Right now it simply employs send_data_ncd_common.
-subroutine send_data_ncd_dft(axis, fobj)
+!! Note: Right now it simply employs write_diag_axis_data_ncd_common.
+subroutine write_diag_axis_data_ncd_dft(axis, fobj)
     class(diag_axis_type),   intent(inout)   :: axis
     class(FmsNetcdfDomainFile_t),  intent(inout)   :: fobj
-    call send_data_ncd_common(axis, fobj)
-end subroutine send_data_ncd_dft
+    call write_diag_axis_data_ncd_common(axis, fobj)
+end subroutine write_diag_axis_data_ncd_dft
 
 !> \brief This routine registers and write axis data
 !! to file object of type FmsNetcdfUnstructuredDomainFile_t.
-!! Note: Right now it simply employs send_data_ncd_common.
-subroutine send_data_ncd_udft(axis, fobj)
+!! Note: Right now it simply employs write_diag_axis_data_ncd_common.
+subroutine write_diag_axis_data_ncd_udft(axis, fobj)
     class(diag_axis_type),   intent(inout)   :: axis
     class(FmsNetcdfUnstructuredDomainFile_t),  intent(inout)   :: fobj
-    call send_data_ncd_common(axis, fobj)
-end subroutine send_data_ncd_udft
+    call write_diag_axis_data_ncd_common(axis, fobj)
+end subroutine write_diag_axis_data_ncd_udft
 
 !> \brief Write the metadata (the attribute field) of the axis
-subroutine send_metadata(me, fileob, varname)
+subroutine write_diag_axis_metadata(me, fileob, varname)
     class (diag_axis_type), intent(in) ::   me
     character(len=*), intent(in)       ::   varname !< The name of the variable
     class(FmsNetcdfFile_t), intent(inout)  :: fileob
@@ -380,7 +375,7 @@ subroutine send_metadata(me, fileob, varname)
     DO i = 1, size(me%attributes)
         !!call register_variable_attribute(fileob, varname,TRIM(attributes(i))  , att_str(1:att_len))
     end do
-end subroutine send_metadata
+end subroutine write_diag_axis_metadata
 
 
 !> \brief Return true if the metatada is already written for this
