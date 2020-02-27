@@ -2,7 +2,7 @@ module fms_diag_table_mod
 
 use fms_diag_data_mod, only: diag_files_type, diag_fields_type, diag_error, diag_null
 use fms_diag_data_mod, only: fatal,note,warning
-use c_to_fortran_mod, only: fms_c2f_string
+use fms_diag_c2fortran_mod, only: fms_c2f_string
 use iso_c_binding
 implicit none
 

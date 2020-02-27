@@ -197,6 +197,7 @@ AC_CONFIG_FILES([Makefile
         exchange/Makefile
         drifters/Makefile
         diag_manager/Makefile
+	diag_manager2/Makefile
         data_override/Makefile
         column_diagnostics/Makefile
         block_control/Makefile
@@ -209,7 +210,8 @@ AC_CONFIG_FILES([Makefile
         libFMS/Makefile
         test_fms/test_common.sh
         test_fms/Makefile
-        test_fms/diag_manager/Makefile
+ 	test_fms/diag_manager/Makefile
+ 	test_fms/diag_manager2/Makefile
         test_fms/data_override/Makefile
         test_fms/exchange/Makefile
         test_fms/monin_obukhov/Makefile

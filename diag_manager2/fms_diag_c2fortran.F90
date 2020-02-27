@@ -1,4 +1,4 @@
-module c_to_fortran_mod 
+module fms_diag_c2fortran_mod
 use iso_c_binding
 
 contains
@@ -25,6 +25,6 @@ pure function fms_c2f_string (cstring) result(fstring)
 end function fms_c2f_string
 
 
-end module c_to_fortran_mod
+end module fms_diag_c2fortran_mod
 
 

@@ -1,4 +1,5 @@
 module fms_diag_util_mod
+use iso_c_binding  !!??
 implicit none
 !> Miscellanoeous utility functions.
 

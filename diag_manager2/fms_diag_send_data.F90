@@ -4,7 +4,8 @@ use fms_diag_averaging_mod, only: get_average, alloc_subarray
 use fms_diag_data_mod,  only: diag_null, diag_error, fatal, note, warning
 use fms_diag_object_mod
 use fms2_io_mod,            only: open_file, close_file, write_data, FmsNetcdfFile_t
-
+use fms_diag_axis_mod
+!!use fms_diag_axis_mod,   only: register  TODO:
 
 !> \descrption The user API for diag_manager is send_data.  Users pass their variable object to
 !! this routine, and magic happens.
@@ -345,7 +346,7 @@ subroutine send_data_3d(diag_obj, time, is_in, js_in, ks_in, mask, &
         do  an = 1,size(diag_obj%axis)
             an_axis = diag_obj%axis(an)
             an_axis_id = diag_obj%get_axis_rid( an, fn )
-            call an_axis%send_data(the_file, diag_obj%get_varname())
+            call an_axis%register(the_file, diag_obj%get_varname())
         end do
 
         !!And write the data
