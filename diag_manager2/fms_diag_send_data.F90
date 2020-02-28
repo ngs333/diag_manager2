@@ -323,14 +323,14 @@ subroutine send_data_3d(diag_obj, time, is_in, js_in, ks_in, mask, &
     logical              :: opened
     integer              :: fn, an, an_axis_id
     type(diag_axis_type) :: an_axis
-    type(fms_io_obj)     :: a_file
+    type(fms_diag_file_type) :: a_file_obj
     type (FmsNetcdfFile_t) :: the_file  !! TODO:: There are additional types (e.g. FmsNetcdfDomainFile_t)
     character(len=*), parameter :: metadata_name = "metadata" !! TODO: Settle on an enum file - no magic nums.
 
-    do fn = 1, size( diag_obj%fms_fileobj )
-        a_file =  diag_obj%fms_fileobj ( fn )
+    do fn = 1, size( diag_obj%diag_files)
+        a_file_obj =  diag_obj%diag_files( fn )
 
-        opened = open_file(the_file, a_file%fname, "append")
+        opened = open_file(the_file, a_file_obj%fname, "append")
         if (.not. opened) then
             call diag_error("diag_mgr_wite_static", "The file " //the_file%path &
                 // " was not opened", FATAL)

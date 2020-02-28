@@ -47,9 +47,9 @@ end interface
 !> \brief Object that holds all variable information
 type    fms_diag_object
      type (diag_fields_type)                           :: diag_field         !< info from diag_table
-     type (diag_files_type),allocatable, dimension(:)  :: diag_file          !< info from diag_table
+     !!type (diag_files_type),allocatable, dimension(:)  :: diag_file          !< info from diag_table
      integer, allocatable, private                    :: diag_id           !< unique id for varable
-     type(fms_diag_file_type),allocatable,dimension(:) :: diag_file          !< Array of file objects 
+     type(fms_diag_file_type),allocatable,dimension(:) :: diag_files          !< Array of file objects
                                                                            !! the for variable
      character(len=:), allocatable, dimension(:)      :: metadata          !< metedata for the variable
      logical, private                                 :: static         !< true is this is a static var
@@ -270,7 +270,7 @@ subroutine copy_diag_obj(objin , objout)
         call diag_error("copy_diag_obj", "You can only copy objects that have been registered",warning)
     endif
     objout%diag_field = objin%diag_field
-    if(allocated(objin%diag_file)) objout%diag_file = objin%diag_file
+    if(allocated(objin%diag_files)) objout%diag_files = objin%diag_files
 
     if(allocated(objin%diag_id)) objout%diag_id = objin%diag_id
 
@@ -280,8 +280,7 @@ subroutine copy_diag_obj(objin , objout)
 
      !! TODO: if(allocated(objin%fms_files))
 
-     if (allocated(objin%fms_fileobj)) objout%fms_fileobj  = objin%fms_fileobj
-     if (allocated(objin%metadata))   objout%metadata = objin%metadata
+     !!if (allocated(objin%fms_fileobj))
      objout%static = objin%static
      if (allocated(objin%registered)) objout%registered  = objin%registered
      if (allocated(objin%frequency))  objout%frequency  = objin%frequency

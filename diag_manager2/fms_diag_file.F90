@@ -1,12 +1,13 @@
 module fms_diag_file_mod
 
 use fms_diag_data_mod,   only: diag_data_type
-use fms2_io
+use fms_diag_table_mod, only: diag_files_type
+!! use fms2_io
+
 implicit none
-private
 
-
-public fms_diag_file
+!!private
+!!public fms_diag_file_type
 
 type fms_diag_file_type
 

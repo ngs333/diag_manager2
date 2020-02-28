@@ -43,7 +43,7 @@ type diag_file_plus_type
     integer   :: end_time
 !!TODO: constructor which takes ancestor!
 contains
-    procedure :: write_now => write_now_inq
+    !!procedure :: write_now => write_now_inq
 end type diag_file_plus_type
 
  character(len=:),allocatable :: diag_table
