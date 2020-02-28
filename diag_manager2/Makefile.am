@@ -16,9 +16,8 @@ AM_CPPFLAGS += -I${top_builddir}/axis_utils
 noinst_LTLIBRARIES = libdiag_data.la libdiag_util.la libdiag_averaging.la \
 libdiag_c2fortran.la libdiag_table.la libdiag_concur.la libdiag_axis.la \
 libdiag_object.la libdiag_send.la libdiag_register.la libdiag_manager2.la \
-libdiag_manager2_parse_c.la 
-#libdiag_manager2_c.la
-#libdiag_manager2_parser_c.la
+libdiag_manager2_c.la 
+
 
 # Each convenience library depends on its source.
 libdiag_data_la_SOURCES = fms_diag_data.F90
@@ -32,10 +31,10 @@ libdiag_object_la_SOURCES = fms_diag_object.F90
 libdiag_send_la_SOURCES = fms_diag_send_data.F90
 libdiag_register_la_SOURCES = fms_diag_register.F90
 libdiag_manager2_la_SOURCES = fms_diag_manager2.F90
-libdiag_manager2_parse_c_la_SOURCES = fms_diag_parse.c
+libdiag_manager2_c_la_SOURCES = fms_diag_parse.c fms_diag_parser.h
 #libdiag_manager2_parser_c_la_SOURCES = fms_diag_parser.c
-#libdiag_manager2_c_la_SOURCES = fms_diag_parse.c fms_diag_parser.c
 
+fms_diag_parse.o: fms_diag_parse.c
 
 # Each mod file depends on the .o file.
 fms_diag_data_mod.mod: fms_diag_data.$(OBJEXT)
@@ -52,7 +51,6 @@ fms_diag_manager2_mod.mod: fms_diag_manager2.$(OBJEXT)
 
 
 # Some mods are dependant on other mods in this dir.
-#fms_diag_table.$(OBJEXT): fms_diag_data_mod.mod, fms_diag_c2fortran_mod.mod
 fms_diag_table.$(OBJEXT): fms_diag_data_mod.mod fms_diag_c2fortran_mod.mod
 fms_diag_concur.$(OBJEXT): fms_diag_data_mod.mod
 fms_diag_axis.$(OBJEXT): fms_diag_data_mod.mod
