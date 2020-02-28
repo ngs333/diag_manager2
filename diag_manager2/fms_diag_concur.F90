@@ -1,5 +1,5 @@
 module fms_diag_concur_mod
-   use fms_diag_data_mod, only: diag_error, fatal, warning, note
+   use fms_diag_util_mod, only: diag_error, fatal, warning, note
    use mpi
    implicit none
 

@@ -7,15 +7,14 @@ module fms_diag_object_mod
 !! The procedures of this object and the types are all in this module.  The fms_dag_object is a type 
 !! that contains all of the information of the variable.  It is extended by a type that holds the
 !! appropriate buffer for the data for manipulation.
-use fms_diag_data_mod,  only: fms_io_obj !!This is temporary
-use fms_diag_data_mod,  only: diag_null, diag_error, fatal, note, warning
-use fms_diag_data_mod,  only: r8, r4, i8, i4, string, null_type_int
-use fms_diag_data_mod,  only: diag_null, diag_not_found, diag_not_registered, diag_registered_id
+use fms_diag_util_mod,  only: diag_null, diag_error, fatal, note, warning
+use fms_diag_util_mod,  only: r8, r4, i8, i4, string, null_type_int
+use fms_diag_util_mod,  only: diag_null, diag_not_found, diag_not_registered, diag_registered_id
 use fms_diag_table_mod, only: is_field_type_null
 use fms_diag_table_mod, only: diag_fields_type, diag_files_type, get_diag_table_field
 use fms_diag_util_mod,  only: int_to_cs, logical_to_cs
 use fms_diag_axis_mod,  only: diag_axis_type
-
+use fms_diag_file_mod,   only: fms_diag_file_type
 
 implicit none
 
@@ -50,7 +49,8 @@ type    fms_diag_object
      type (diag_fields_type)                           :: diag_field         !< info from diag_table
      type (diag_files_type),allocatable, dimension(:)  :: diag_file          !< info from diag_table
      integer, allocatable, private                    :: diag_id           !< unique id for varable
-     type (fms_io_obj), allocatable, dimension(:)     :: fms_fileobj        !< fileobjs !!TODO use file class?
+     type(fms_diag_file_type),allocatable,dimension(:) :: diag_file          !< Array of file objects 
+                                                                           !! the for variable
      character(len=:), allocatable, dimension(:)      :: metadata          !< metedata for the variable
      logical, private                                 :: static         !< true is this is a static var
      logical, allocatable, private                    :: registered     !< true when registered

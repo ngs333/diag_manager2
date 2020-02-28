@@ -1,12 +1,50 @@
 module fms_diag_table_mod
 
-use fms_diag_data_mod, only: diag_files_type, diag_fields_type, diag_error, diag_null
-use fms_diag_data_mod, only: fatal,note,warning
 use fms_diag_c2fortran_mod, only: fms_c2f_string
+use fms_diag_util_mod, only: diag_error, diag_null
+use fms_diag_util_mod, only: fatal,note,warning
 use iso_c_binding
 implicit none
 
 public :: diag_table, fms_diag_table_init, fms_write_diag_table, is_field_type_null
+
+!> Matches C struct 
+type, bind(c) :: diag_files_type
+     character (c_char) :: fname (20) !< file name
+     character (c_char) :: frequnit (7) !< the frequency unit
+     integer (c_int)    :: freq !< the frequency of data
+     character (c_char) :: timeunit(7) !< The unit of time
+     character (c_char) :: unlimdim(8) !< The name of the unlimited dimension
+     character (c_char) :: key(8) !< Storage for the key in the yaml file
+end type diag_files_type
+!> Matches C struct 
+type, bind(c) :: diag_fields_type
+     character (c_char) :: fname (20) !< The field/diagnostic name
+     character (c_char) :: var(20) !< The name of the variable
+     character (c_char) :: files(20) !< The files that the diagnostic will be written to
+     integer (c_int)    :: ikind !< The type/kind of the variable
+     character (c_char) :: skind(20) !< The type/kind of the variable
+     character (c_char) :: reduction(20) !< IDK
+     character (c_char) :: all_all(4) !< This has to be "all"
+     character (c_char) :: region(50) !< The region
+     character (c_char) :: regcoord(50) !< Coodinates of the region
+     character (c_char) :: module_location(20) !< The module
+     character (c_char) :: key(8) !< Storage for the key in the yaml file
+end type diag_fields_type
+
+
+!> Extension via containment of diag_fileds
+!!  for providing write decisions functionality
+type diag_file_plus_type
+    type(diag_files_type) :: diag_file
+    character(len=:), allocatable :: name
+    integer   :: period
+    integer   :: start_time
+    integer   :: end_time
+!!TODO: constructor which takes ancestor!
+contains
+    procedure :: write_now => write_now_inq
+end type diag_file_plus_type
 
  character(len=:),allocatable :: diag_table
 
