@@ -1,6 +1,6 @@
 module fms_diag_axis_mod
 
-use fms_diag_data_mod,   only: &
+use fms_diag_util_mod,   only: &
      diag_error, fatal, note, warning
 use mpp_domains_mod,     only: &
      domainUG, domain1d, domain2d, mpp_get_compute_domain,&

@@ -1,7 +1,7 @@
 module fms_diag_send_data_mod
 
 use fms_diag_averaging_mod, only: get_average, alloc_subarray
-use fms_diag_data_mod,  only: diag_null, diag_error, fatal, note, warning
+use fms_diag_util_mod,  only: diag_null, diag_error, fatal, note, warning
 use fms_diag_object_mod
 use fms2_io_mod,            only: open_file, close_file, write_data, FmsNetcdfFile_t
 
