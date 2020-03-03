@@ -11,7 +11,7 @@ use fms2_io_mod,         only: &
      unlimited, FmsNetcdfFile_t, FmsNetcdfDomainFile_t, FmsNetcdfUnstructuredDomainFile_t, &
      register_axis, register_field, write_data, get_variable_attribute, variable_att_exists, &
      dimension_exists, is_dimension_unlimited, get_dimension_size, get_variable_dimension_names, &
-     file_exists, set_fileobj_time_name, check_if_open
+     file_exists, set_fileobj_time_name, check_if_open, register_variable_attribute
 
 public
 
