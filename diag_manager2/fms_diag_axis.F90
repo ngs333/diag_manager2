@@ -306,7 +306,7 @@ subroutine register_diag_axis(this, fobj, varname)
     character(len=*),   intent(in)          :: varname
     !!class(FmsNetcdfFile_t), pointer    :: fptr
 
-    if( is_metadata_written(this, fobj) == .false.) then
+    if( is_metadata_written(this, fobj) .eqv. .false.) then
          call write_diag_axis_metadata(this, fobj, varname)
          call set_metadata_written (this, fobj, .true.)
     end if

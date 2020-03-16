@@ -233,15 +233,9 @@ subroutine fms_send_data3d (diagobj, var, varname, time, is_in, js_in, ks_in, ma
      return
  endif
 
-!> Write the object if its static
-!> TODO: Only if its not yet writtennetcd
-if ( .not. diagobj%is_static() ) then
-    call diagobj%send_data(time, is_in, js_in, ks_in, mask, &
+call diagobj%send_data(time, is_in, js_in, ks_in, mask, &
                             rmask, ie_in, je_in, ke_in, weight, err_msg)
-else
-    call diag_error("fms_send_data3d", "dynamic snd_data" // diagobj%get_varname() // &
-          " is not yet implemented", WARNING)
-endif
+
 end subroutine fms_send_data3d
 
 
@@ -303,8 +297,73 @@ end subroutine send_data_generic
 
 !> Register (when necessary) and write all the data (including axis infortmation) to
 !!  all the files specified in the object.
-!! TODO: This is just a static version
 subroutine send_data_3d(diag_obj, time, is_in, js_in, ks_in, mask, &
+                         rmask, ie_in, je_in, ke_in, weight, err_msg)
+    class (fms_diag_object_3d),    intent(in)                  :: diag_obj
+    integer, optional            , intent(in)                  :: time !< A time place holder
+    integer, optional            , intent(in)                  :: is_in !< Start of the first dimension
+    integer, optional            , intent(in)                  :: js_in !< Start of the second dimension
+    integer, optional            , intent(in)                  :: ks_in !< Start of the third dimension
+    integer, optional            , intent(in)                  :: ie_in !< End of the first dimension
+    integer, optional            , intent(in)                  :: je_in !< End of the second dimension
+    integer, optional            , intent(in)                  :: ke_in !< End of the third dimension
+    logical, optional            , intent(in)                  :: mask !< A lask for point to ignore
+    real   , optional            , intent(in)                  :: rmask !< I DONT KNOW
+    real   , optional            , intent(in)                  :: weight !< Something for averaging?
+    CHARACTER(len=*)             , INTENT(out), OPTIONAL       :: err_msg
+    !! local vars
+    class(*), dimension(:,:), allocatable ::  avg
+    logical              :: opened
+    integer              :: fn, an, an_axis_id
+    type(diag_axis_type) :: an_axis
+    type(fms_diag_file_type) :: a_file_obj
+    type (FmsNetcdfFile_t) :: the_file  !! TODO:: There are additional types (e.g. FmsNetcdfDomainFile_t)
+    character(len=*), parameter :: metadata_name = "metadata" !! TODO: Settle on an enum file - no magic nums.
+
+    if ( diag_obj%is_static()  .eqv. .true. ) then
+        call send_data_3d(diag_obj, time, is_in, js_in, ks_in, mask, &
+                         rmask, ie_in, je_in, ke_in, weight, err_msg)
+        return
+    endif
+
+
+    do fn = 1, size( diag_obj%diag_files)
+        a_file_obj =  diag_obj%diag_files( fn )
+
+        opened = open_file(the_file, a_file_obj%fname, "append")
+        if (.not. opened) then
+            call diag_error("diag_mgr_wite_static", "The file " //the_file%path &
+                // " was not opened", FATAL)
+            EXIT !! Break out of loop. TODO: Discuss return policy, error codes, etc.
+        end if
+
+        !!TODO: Cnsider moving the next few lines to diag_object
+        !!TODO: Needs test to see if already written
+        call send_attribute_meta(diag_obj, the_file)
+
+        !!Loop over axis and register and write data and metadata
+        !!Each axis first determins if its already written, etc.
+        do  an = 1,size(diag_obj%axis)
+            an_axis = diag_obj%axis(an)
+            an_axis_id = diag_obj%get_axis_rid( an, fn )
+            call an_axis%register(the_file, diag_obj%get_varname())
+        end do
+
+        !!And write the data
+        !!select type (pd => diag_obj%vardata)
+        call write_data(the_file,  diag_obj%get_varname(), diag_obj%vardata)
+
+        !!And write the stats (average, rms, etc) if this is the right time
+        ! call get_average(var, avg, is_in, ie_in, js_in, je_in, ks_in, ke_in)
+        ! call write_data(the_file, diag_obj%get_varname ,avg  )
+
+
+  end do !!Over file objects
+
+end subroutine
+
+
+subroutine send_data_3d_static(diag_obj, time, is_in, js_in, ks_in, mask, &
                          rmask, ie_in, je_in, ke_in, weight, err_msg)
     class (fms_diag_object_3d),    intent(in)                  :: diag_obj
     integer, optional            , intent(in)                  :: time !< A time place holder
@@ -352,14 +411,6 @@ subroutine send_data_3d(diag_obj, time, is_in, js_in, ks_in, mask, &
         !!And write the data
         !!select type (pd => diag_obj%vardata)
         call write_data(the_file,  diag_obj%get_varname(), diag_obj%vardata)
-
-        !!And calculate and write the average
-        !! call alloc_subarray(var, avg);
-        !! TODO: include weight, min, max, etc
-        ! call get_average(var, avg)
-        ! call get_average(var, avg, is_in, ie_in, js_in, je_in, ks_in, ke_in)
-        ! call write_data(the_file, diag_obj%get_varname ,avg  )
-
 
   end do !!Over file objects
 
