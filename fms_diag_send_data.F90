@@ -1,9 +1,12 @@
 module fms_diag_send_data_mod
 
 use fms_diag_averaging_mod, only: get_average, alloc_subarray
-use fms_diag_write_data_mod, only: write_static
-use fms_diag_data_mod,  only: diag_null, diag_error, fatal, note, warning
+use fms_diag_util_mod,  only: diag_null, diag_error, fatal, note, warning
 use fms_diag_object_mod
+use fms2_io_mod,            only: open_file, close_file, write_data, FmsNetcdfFile_t
+use fms_diag_axis_mod
+!!use fms_diag_axis_mod,   only: register  TODO:
+
 !> \descrption The user API for diag_manager is send_data.  Users pass their variable object to
 !! this routine, and magic happens.
 !! - Check if the diagnostic object is allocated/registered.  If it isn't return.
@@ -37,6 +40,55 @@ type send_data_opts
      real, allocatable ::    weight
 end type send_data_opts
 
+
+!> \brief Extends the variable object to work with multiple types of data
+type, extends(fms_diag_object) :: fms_diag_object_scalar
+     class(*), allocatable :: vardata
+!contains
+    !procedure :: send_data => send_data_scalar
+end type fms_diag_object_scalar
+
+type, extends(fms_diag_object) :: fms_diag_object_1d
+     class(*), allocatable, dimension(:) :: vardata
+!contains
+     !procedure :: send_data => send_data_1d
+end type fms_diag_object_1d
+
+type, extends(fms_diag_object) :: fms_diag_object_2d
+     class(*), allocatable, dimension(:,:) :: vardata
+!contains
+     !procedure :: send_data => fms_send_data_2d
+end type fms_diag_object_2d
+
+type, extends(fms_diag_object) :: fms_diag_object_3d
+    class(*), allocatable, dimension(:,:,:) :: vardata
+contains
+    procedure :: send_data => send_data_3d
+end type fms_diag_object_3d
+
+type, extends(fms_diag_object) :: fms_diag_object_4d
+    !contains
+    !procedure :: send_data => send_data_4d
+end type fms_diag_object_4d
+
+type, extends(fms_diag_object) :: fms_diag_object_5d
+     class(*), allocatable, dimension(:,:,:,:,:) :: vardata
+!contains
+     !procedure :: send_data => send_data_5d
+end type fms_diag_object_5d
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! variables !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+type(fms_diag_object) :: null_ob
+type(fms_diag_object_scalar) :: null_sc
+type(fms_diag_object_1d) :: null_1d
+type(fms_diag_object_2d) :: null_2d
+type(fms_diag_object_3d) :: null_3d
+type(fms_diag_object_4d) :: null_4d
+type(fms_diag_object_5d) :: null_5d
+
+public :: null_sc, null_1d, null_2d, null_4d, null_5d
+
+
 contains 
 !> \descrption scalar wrapper for fms_send_data
 subroutine fms_send_datascalar(diagobj, var)
@@ -47,6 +99,7 @@ subroutine fms_send_datascalar(diagobj, var)
 !> If the diagnostic object is not allocated, then return withut doing anything
  if (.not.allocated( diagobj )) return
 end subroutine fms_send_datascalar
+
 subroutine fms_send_data1d(diagobj, var)
  class (fms_diag_object),target, intent(inout), allocatable :: diagobj !< The diag variable object
  class(*), dimension(:)       , intent(in) , target         :: var !< The variable
@@ -58,12 +111,12 @@ subroutine fms_send_data1d(diagobj, var)
  call switch_to_right_type(diagobj, null_1d, var(lbound(var,1)))
 
 end subroutine fms_send_data1d
+
 !> \descrption 4D wrapper for fms_send_data
 subroutine fms_send_data4d(diagobj, var, time, is_in, js_in, ks_in, mask, &
                                    rmask, ie_in, je_in, ke_in, weight, err_msg)
  class (fms_diag_object),target, intent(inout), allocatable :: diagobj !< The diag variable object
  class(*), dimension(:,:,:,:) , intent(in) , target         :: var !< The variable
- class(*), dimension(:,:,:,:) ,              pointer        :: vptr => NULL() !< A pointer to the data
  integer, optional            , intent(in)                  :: time !< A time place holder
  integer, optional            , intent(in)                  :: is_in !< Start of the first dimension
  integer, optional            , intent(in)                  :: js_in !< Start of the second dimension
@@ -76,7 +129,8 @@ subroutine fms_send_data4d(diagobj, var, time, is_in, js_in, ks_in, mask, &
  real   , optional            , intent(in)                  :: weight !< Something for averaging?
  CHARACTER(len=*)             , INTENT(out), OPTIONAL       :: err_msg
 ! local vars
- class (fms_diag_object)      , pointer                     :: dptr => NULL()
+ class(*), dimension(:,:,:,:) ,pointer        :: vptr => NULL() !< A pointer to the data
+ class (fms_diag_object)      ,pointer       :: dptr => NULL()
 
 !> If the diagnostic object is not allocated, then return
  if (.not.allocated( diagobj )) return
@@ -90,8 +144,7 @@ end subroutine fms_send_data4d
 subroutine fms_send_data5d(diagobj, var, time, is_in, js_in, ks_in, mask, &
                                    rmask, ie_in, je_in, ke_in, weight, err_msg)
  class (fms_diag_object),target, intent(inout), allocatable :: diagobj !< The diag variable object
- class(*), dimension(:,:,:,:,:) , intent(in) , target       :: var !< The variable
- class(*), dimension(:,:,:,:,:) ,              pointer      :: vptr => NULL() !< A pointer to the data
+ class(*), dimension(:,:,:,:,:), intent(in) , target       :: var !< The variable
  integer, optional            , intent(in)                  :: time !< A time place holder
  integer, optional            , intent(in)                  :: is_in !< Start of the first dimension
  integer, optional            , intent(in)                  :: js_in !< Start of the second dimension
@@ -104,7 +157,8 @@ subroutine fms_send_data5d(diagobj, var, time, is_in, js_in, ks_in, mask, &
  real   , optional            , intent(in)                  :: weight !< Something for averaging?
  CHARACTER(len=*)             , INTENT(out), OPTIONAL       :: err_msg
 ! local vars
- class (fms_diag_object)      , pointer                     :: dptr => NULL()
+ class(*), dimension(:,:,:,:,:) ,pointer               :: vptr => NULL() !< A pointer to the data
+ class (fms_diag_object)      , pointer                :: dptr => NULL()
 
 !> If the diagnostic object is not allocated, then return
  if (.not.allocated( diagobj )) return
@@ -119,7 +173,6 @@ subroutine fms_send_data2d (diagobj, var, time, is_in, js_in, ks_in, mask, &
                                    rmask, ie_in, je_in, ke_in, weight, err_msg)
  class (fms_diag_object),target, intent(inout), allocatable :: diagobj !< The diag variable object
  class(*), dimension(:,:)   , intent(in) , target         :: var !< The variable
- class(*), dimension(:,:)   ,              pointer        :: vptr => NULL() !< A pointer to the data
  integer, optional            , intent(in)                  :: time !< A time place holder
  integer, optional            , intent(in)                  :: is_in !< Start of the first dimension
  integer, optional            , intent(in)                  :: js_in !< Start of the second dimension
@@ -132,7 +185,8 @@ subroutine fms_send_data2d (diagobj, var, time, is_in, js_in, ks_in, mask, &
  real   , optional            , intent(in)                  :: weight !< Something for averaging?
  CHARACTER(len=*)             , INTENT(out), OPTIONAL       :: err_msg
 ! local vars
- class (fms_diag_object)      , pointer                     :: dptr => NULL()
+ class(*), dimension(:,:)       ,pointer        :: vptr => NULL() !< A pointer to the data
+ class (fms_diag_object)        ,pointer        :: dptr => NULL()
 !> If this is the first call in, set the type to be fms_diag_object_2d
  call switch_to_right_type(diagobj, null_2d, var(lbound(var,1),lbound(var,2)) )
 
@@ -142,11 +196,8 @@ end subroutine fms_send_data2d
 subroutine fms_send_data3d (diagobj, var, varname, time, is_in, js_in, ks_in, mask, &
                                    rmask, ie_in, je_in, ke_in, weight, err_msg)
  class (fms_diag_object),target, intent(inout), allocatable :: diagobj !< The diag variable object
- !! TODO: real vs char(*)
- !!class(*), dimension(:,:,:)   , intent(in) , target         :: var !< The variable
- real(kind=8), dimension(:,:,:)   , intent(in) , target         :: var !< The variable
- class(*), dimension(:,:,:)   ,              pointer        :: vptr => NULL() !< A pointer to the data
- character(len=*), intent(in)                               :: varname  !!TODO: Is this neccesary
+ class(*), dimension(:,:,:)   , intent(in) , target         :: var !< The variable
+ character(len=*),              intent(in)                  :: varname  !!TODO: Is this neccesary
  integer, optional            , intent(in)                  :: time !< A time place holder
  integer, optional            , intent(in)                  :: is_in !< Start of the first dimension
  integer, optional            , intent(in)                  :: js_in !< Start of the second dimension
@@ -159,30 +210,32 @@ subroutine fms_send_data3d (diagobj, var, varname, time, is_in, js_in, ks_in, ma
  real   , optional            , intent(in)                  :: weight !< Something for averaging?
  CHARACTER(len=*)             , INTENT(out), OPTIONAL       :: err_msg
 ! local vars
- class (fms_diag_object)      , pointer                     :: dptr => NULL()
+ class(*), dimension(:,:,:)   ,pointer                      :: vptr => NULL() !< A pointer to the data
+ class (fms_diag_object_3d)   ,pointer                      :: dptr => NULL()
 
-!
-!> If the diagnostic object is not allocated, then return
+ !
+ !! If the diagnostic object is not allocated, then return
  if (.not. allocated( diagobj )) then
-    call diag_error("fms_send_data3d", "The diag object " // diagobj%get_varname() // &
-          " is not allocated", WARNING)
+     call diag_error("fms_send_data3d", "The diag object " // diagobj%get_varname() // &
+         " is not allocated", WARNING)
  endif
  return
 
-!> If this is the first call in, set the type to be fms_diag_object_3d
-!> first check if already of type 3d
- call switch_to_right_type(diagobj, null_3d, var(lbound(var,1),lbound(var,2),lbound(var,3)) )
+ !! If this is the first call in, set the type to be fms_diag_object_3d
+ !! first check if already of type 3d
+ call switch_to_right_type(diagobj, null_3d, &
+    var(lbound(var,1),lbound(var,2),lbound(var,3)))
 
-!> If the diagnostic object is not registered, then return.
-if(.not. diagobj%is_registeredB()) return
+     !! If the diagnostic object is not registered, then return.
+ if(.not. diagobj%is_registeredB())then
+     call diag_error("fms_send_data3d", "The diag object " // diagobj%get_varname() // &
+         " is not registered", WARNING)
+     return
+ endif
 
-!> Write the object if its static
-!> TODO: Only if its not yet writtennetcd
-if ( .not. diagobj%is_static() ) then
-    call write_static(diagobj, var, varname, time, is_in, js_in, ks_in, mask, &
-                      rmask, ie_in, je_in, ke_in, weight, err_msg)
-!else write dynamic
-endif
+call diagobj%send_data(time, is_in, js_in, ks_in, mask, &
+                            rmask, ie_in, je_in, ke_in, weight, err_msg)
+
 end subroutine fms_send_data3d
 
 
@@ -198,6 +251,7 @@ subroutine switch_to_right_type(diagobj, null_obj,var)
  class (*)              ,intent (in)                        :: var
  class (fms_diag_object), allocatable                       :: dcopy
  class (fms_diag_object), pointer                           :: dptr => NULL()
+ class (fms_diag_object), allocatable                      :: dcopy_3d
  
  dptr => diagobj
  select type (dptr)
@@ -213,12 +267,170 @@ subroutine switch_to_right_type(diagobj, null_obj,var)
  end select
  if (allocated(dcopy)) deallocate(dcopy)
  if (associated(dptr)) nullify(dptr) !> Dont leak memory
- 
-end subroutine switch_to_right_type
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine fms_send_data
 
-end subroutine fms_send_data
+end subroutine switch_to_right_type
+
+
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!!
+!!! Dimentional extension of fms_diag_obj:
+
+!> Procedure which contains code that is common to the send_data_nx routines.
+subroutine send_data_generic(diag_obj, time, is_in, js_in, ks_in, mask, &
+                         rmask, ie_in, je_in, ke_in, weight, err_msg)
+    class (fms_diag_object),    intent(in)                  :: diag_obj
+    integer, optional            , intent(in)                  :: time !< A time place holder
+    integer, optional            , intent(in)                  :: is_in !< Start of the first dimension
+    integer, optional            , intent(in)                  :: js_in !< Start of the second dimension
+    integer, optional            , intent(in)                  :: ks_in !< Start of the third dimension
+    integer, optional            , intent(in)                  :: ie_in !< End of the first dimension
+    integer, optional            , intent(in)                  :: je_in !< End of the second dimension
+    integer, optional            , intent(in)                  :: ke_in !< End of the third dimension
+    logical, optional            , intent(in)                  :: mask !< A lask for point to ignore
+    real   , optional            , intent(in)                  :: rmask !< I DONT KNOW
+    real   , optional            , intent(in)                  :: weight !< Something for averaging?
+    CHARACTER(len=*)             , INTENT(out), OPTIONAL       :: err_msg
+
+end subroutine send_data_generic
+
+!> Register (when necessary) and write all the data (including axis infortmation) to
+!!  all the files specified in the object.
+subroutine send_data_3d(diag_obj, time, is_in, js_in, ks_in, mask, &
+                         rmask, ie_in, je_in, ke_in, weight, err_msg)
+    class (fms_diag_object_3d),    intent(in)                  :: diag_obj
+    integer, optional            , intent(in)                  :: time !< A time place holder
+    integer, optional            , intent(in)                  :: is_in !< Start of the first dimension
+    integer, optional            , intent(in)                  :: js_in !< Start of the second dimension
+    integer, optional            , intent(in)                  :: ks_in !< Start of the third dimension
+    integer, optional            , intent(in)                  :: ie_in !< End of the first dimension
+    integer, optional            , intent(in)                  :: je_in !< End of the second dimension
+    integer, optional            , intent(in)                  :: ke_in !< End of the third dimension
+    logical, optional            , intent(in)                  :: mask !< A lask for point to ignore
+    real   , optional            , intent(in)                  :: rmask !< I DONT KNOW
+    real   , optional            , intent(in)                  :: weight !< Something for averaging?
+    CHARACTER(len=*)             , INTENT(out), OPTIONAL       :: err_msg
+    !! local vars
+    class(*), dimension(:,:), allocatable ::  avg
+    logical              :: opened
+    integer              :: fn, an, an_axis_id
+    type(diag_axis_type) :: an_axis
+    type(fms_diag_file_type) :: a_file_obj
+    type (FmsNetcdfFile_t) :: the_file  !! TODO:: There are additional types (e.g. FmsNetcdfDomainFile_t)
+    character(len=*), parameter :: metadata_name = "metadata" !! TODO: Settle on an enum file - no magic nums.
+
+    if ( diag_obj%is_static()  .eqv. .true. ) then
+        call send_data_3d(diag_obj, time, is_in, js_in, ks_in, mask, &
+                         rmask, ie_in, je_in, ke_in, weight, err_msg)
+        return
+    endif
+
+
+    do fn = 1, size( diag_obj%diag_files)
+        a_file_obj =  diag_obj%diag_files( fn )
+
+        opened = open_file(the_file, a_file_obj%fname, "append")
+        if (.not. opened) then
+            call diag_error("diag_mgr_wite_static", "The file " //the_file%path &
+                // " was not opened", FATAL)
+            EXIT !! Break out of loop. TODO: Discuss return policy, error codes, etc.
+        end if
+
+        !!TODO: Cnsider moving the next few lines to diag_object
+        !!TODO: Needs test to see if already written
+        call send_attribute_meta(diag_obj, the_file)
+
+        !!Loop over axis and register and write data and metadata
+        !!Each axis first determins if its already written, etc.
+        do  an = 1,size(diag_obj%axis)
+            an_axis = diag_obj%axis(an)
+            an_axis_id = diag_obj%get_axis_rid( an, fn )
+            call an_axis%register(the_file, diag_obj%get_varname())
+        end do
+
+        !!And write the data
+        !!select type (pd => diag_obj%vardata)
+        call write_data(the_file,  diag_obj%get_varname(), diag_obj%vardata)
+
+        !!And write the stats (average, rms, etc) if this is the right time
+        ! call get_average(var, avg, is_in, ie_in, js_in, je_in, ks_in, ke_in)
+        ! call write_data(the_file, diag_obj%get_varname ,avg  )
+
+
+  end do !!Over file objects
+
+end subroutine
+
+
+subroutine send_data_3d_static(diag_obj, time, is_in, js_in, ks_in, mask, &
+                         rmask, ie_in, je_in, ke_in, weight, err_msg)
+    class (fms_diag_object_3d),    intent(in)                  :: diag_obj
+    integer, optional            , intent(in)                  :: time !< A time place holder
+    integer, optional            , intent(in)                  :: is_in !< Start of the first dimension
+    integer, optional            , intent(in)                  :: js_in !< Start of the second dimension
+    integer, optional            , intent(in)                  :: ks_in !< Start of the third dimension
+    integer, optional            , intent(in)                  :: ie_in !< End of the first dimension
+    integer, optional            , intent(in)                  :: je_in !< End of the second dimension
+    integer, optional            , intent(in)                  :: ke_in !< End of the third dimension
+    logical, optional            , intent(in)                  :: mask !< A lask for point to ignore
+    real   , optional            , intent(in)                  :: rmask !< I DONT KNOW
+    real   , optional            , intent(in)                  :: weight !< Something for averaging?
+    CHARACTER(len=*)             , INTENT(out), OPTIONAL       :: err_msg
+    !! local vars
+    class(*), dimension(:,:), allocatable ::  avg
+    logical              :: opened
+    integer              :: fn, an, an_axis_id
+    type(diag_axis_type) :: an_axis
+    type(fms_diag_file_type) :: a_file_obj
+    type (FmsNetcdfFile_t) :: the_file  !! TODO:: There are additional types (e.g. FmsNetcdfDomainFile_t)
+    character(len=*), parameter :: metadata_name = "metadata" !! TODO: Settle on an enum file - no magic nums.
+
+    do fn = 1, size( diag_obj%diag_files)
+        a_file_obj =  diag_obj%diag_files( fn )
+
+        opened = open_file(the_file, a_file_obj%fname, "append")
+        if (.not. opened) then
+            call diag_error("diag_mgr_wite_static", "The file " //the_file%path &
+                // " was not opened", FATAL)
+            EXIT !! Break out of loop. TODO: Discuss return policy, error codes, etc.
+        end if
+
+        !!TODO: Cnsider moving the next few lines to diag_object
+        !!TODO: Needs test to see if already written
+        call send_attribute_meta(diag_obj, the_file)
+
+        !!Loop over axis and register and write data and metadata
+        !!Each axis first determins if its already written, etc.
+        do  an = 1,size(diag_obj%axis)
+            an_axis = diag_obj%axis(an)
+            an_axis_id = diag_obj%get_axis_rid( an, fn )
+            call an_axis%register(the_file, diag_obj%get_varname())
+        end do
+
+        !!And write the data
+        !!select type (pd => diag_obj%vardata)
+        call write_data(the_file,  diag_obj%get_varname(), diag_obj%vardata)
+
+  end do !!Over file objects
+
+end subroutine
+
+!> \brief Write the field attributes (file metadata) to file.
+!! Note: there is a similar function for axis
+subroutine send_attribute_meta(diag_obj, fileob)
+    class (fms_diag_object),    intent(in) :: diag_obj
+    class(FmsNetcdfFile_t), intent(inout)  :: fileob
+    !! TODO: Fill in function body
+    ! local vars
+    character(len=:), allocatable         ::vname
+    vname = diag_obj%get_varname()
+    DO i = 1, size(diag_obj%metadata)
+        !! Note: Original function in diag_output.FO:write_axis_meta had select over attribute%type
+        !!call register_variable_attribute(fileob, varname,TRIM(attributes(i))  , att_str(1:att_len))
+    end do
+end subroutine send_attribute_meta
+
+
 
 end module fms_diag_send_data_mod

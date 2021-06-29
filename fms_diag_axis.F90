@@ -1,18 +1,19 @@
 module fms_diag_axis_mod
 
-use fms_diag_data_mod, only: diag_error, fatal, note, warning
-use fms2_io
+use fms_diag_util_mod,   only: &
+     diag_error, fatal, note, warning
+use mpp_domains_mod,     only: &
+     domainUG, domain1d, domain2d, mpp_get_compute_domain,&
+     mpp_get_domain_components, null_domain1d, null_domain2d, null_domainUG,&
+     NORTH, EAST, CENTER, &
+     OPERATOR(.NE.), mpp_get_global_domain, mpp_get_domain_name
+use fms2_io_mod,         only: &
+     unlimited, FmsNetcdfFile_t, FmsNetcdfDomainFile_t, FmsNetcdfUnstructuredDomainFile_t, &
+     register_axis, register_field, write_data, get_variable_attribute, variable_att_exists, &
+     dimension_exists, is_dimension_unlimited, get_dimension_size, get_variable_dimension_names, &
+     file_exists, set_fileobj_time_name, check_if_open, register_variable_attribute
 
-
-type domain1d
- integer :: filler
-end type domain1d
-type domain2d
- integer :: filler
-end type domain2d
-type domainUG
- integer :: filler
-end type domainUG
+public
 
 type diag_axis_type
      integer :: id       !< The axis ID
@@ -35,6 +36,9 @@ type diag_axis_type
      class(*), allocatable, dimension (:) :: adata !< The axis data
      character (len=:), dimension(:), allocatable :: attributes !< The axis metadata
      logical, allocatable :: initialized
+
+contains
+    procedure :: register => register_diag_axis
 
 end type diag_axis_type
 
@@ -65,8 +69,11 @@ type(diag_axis_type), allocatable :: Axes_temp(:)
 public :: diag_axis_type
 public :: UP, DOWN, VOID_AXIS, HORIZONTAL
 
+
+
 contains
 
+!!TODO: Missing axis position? Like NORTH, EAST, CENTER
 type(diag_axis_type) function fms_diag_axis_init (axis, aname, adata, units, cart, long_name, direction,&
        & set_name, edges, Domain, Domain2, DomainU, aux, req, tile_count, start, ending, attributes)
     type(diag_axis_type), intent(inout)      :: axis !< The axis object
@@ -258,7 +265,8 @@ type(diag_axis_type) function fms_diag_axis_init (axis, aname, adata, units, car
        axis%DomainU = DomainU
     else
        !axis%Domain2 = null_domain2
-       !axis%Domain = null_domain1
+       !axis%Domain = null_domain1             if (trim(uppercase(trim(axis_cart_name))) .eq. "X" .or. trim(uppercase(trim(axis_cart_name))) .eq. "Y") then
+
        !axis%DomainU = null_domainU
     end if
   end if
@@ -283,5 +291,129 @@ integer function get_axis_set_num(set_name)
        end if
     end do
 end function get_axis_set_num
+
+
+
+!> \brief This is the top level routine to register and write data for the axis,
+!! and it also write the metadata if it is not already written.
+!! Assumes: axes object is initalized by this point
+!! REFERENCE: See DM1 functions diag_util.F90::opening_file and diag_output.F90::write_axis_meta_data
+!!   and write_field_meta_data
+subroutine register_diag_axis(this, fobj, varname)
+    class(diag_axis_type),   intent(inout)  :: this
+    class(FmsNetcdfFile_t),  intent(inout), target  :: fobj
+    character(len=*),   intent(in)          :: varname
+    class(FmsNetcdfFile_t), pointer    :: fptr
+
+    integer alength
+
+    alength  = size(this%adata) !!TODO : verify
+    fptr => fobj
+    if( is_metadata_written(this, fobj) .eqv. .false.) then
+        call write_diag_axis_metadata(this, fobj, varname)
+        call set_metadata_written (this, fobj, .true.)
+    end if
+
+     !!TODO: This function only covers case where ( Domain .NE. null_domain1d )
+    if (this%cart.ne. "X" .and. this%cart .ne. "Y") then
+        call diag_error("fns_diag_axis_mod::register_diag_axis_", &
+            "axis cart name need to be X or Y", FATAL)
+        return
+    endif
+
+    IF(alength > 0) then
+        select type (fptr) !! Also check X or Y axis
+        type is (FmsNetcdfDomainFile_t)
+            !!TODO determine axis_pos, domain_indicies, and pelist
+            !call register_axis(fptr, this%aname, this%cart, domain_position=axis_pos )
+            !!if (allocated(fptr%pelist)) then
+            !!call get_global_io_domain_indices(fptr, trim(axis_name), istart, iend)
+            call register_units_lname_cart(this, fptr, .true.)
+                 !!call write_data(fptr, this%aname, axis_data(istart:iend) )
+        type is (FmsNetcdfFile_t) !< For regional X and Y axes, treat as any other axis
+            call register_axis(fptr, this%aname, dimension_length=size(this%adata))
+            istart = lbound(this%adata,1)
+            iend = ubound(this%adata,1)
+            call register_units_lname_cart(this, fptr, .true.)
+            call register_direction(this, fptr)
+            call write_data(fptr, this%aname, this%adata(istart:iend) )
+        class default
+            call diag_eror("register_diag_axis", &
+                "The file object is not the right type. It must be FmsNetcdfDomainFile_t or "//&
+                "FmsNetcdfFile_t for a X or Y axis, ", FATAL)
+        end select
+    !!else !! alength != 0
+        !!TODO
+    endif
+
+
+end subroutine register_diag_axis
+
+
+!> \brief Write the metadata (the attribute field) of the axis
+subroutine write_diag_axis_metadata(me, fobj, varname)
+    class (diag_axis_type), intent(in) ::   me
+    character(len=*), intent(in)       ::   varname !< The name of the variable
+    class(FmsNetcdfFile_t), intent(inout)  :: fobj
+    !! TODO
+    !! Note: Original function in diag_output.FO:write_axis_meta had select over attribute%type
+    DO i = 1, size(me%attributes)
+        !!call register_variable_attribute(fileob, varname,TRIM(attributes(i))  , att_str(1:att_len))
+    end do
+end subroutine write_diag_axis_metadata
+
+!> \brief Register the units, the long_name and the cartesian name
+subroutine register_units_lname_cart(this, fobj, double_flag)
+    class (diag_axis_type), intent(in) ::   this
+    class(FmsNetcdfFile_t), intent(inout)  :: fobj
+    logical , intent(in) :: double_flag
+
+    if(double_flag .eqv. .true.)then
+         call register_field(fobj, this%aname, "double", (/this%aname/) )
+    end if
+    if(trim(this%units) .ne. "none") then
+        call register_variable_attribute(fobj, this%aname, "units", this%units)
+    endif
+    call register_variable_attribute(fobj,this%aname, "long_name", this%longname)
+    call register_variable_attribute(fobj, this%aname, "axis",this%cart)
+end subroutine register_units_lname_cart
+
+!> \bried Register axis direction
+!! Is it better for the member variable to be not an int.
+subroutine register_direction(this, fobj)
+ class (diag_axis_type), intent(in) ::   this
+ class(FmsNetcdfFile_t), intent(inout)  :: fobj
+
+  select case (this%direction)
+    case (1)
+        call register_variable_attribute(fobj, this%aname, "positive", "up")
+    case (-1)
+        call register_variable_attribute(fobj, this%aname, "positive", "down")
+    case default
+        call diag_error("fns_diag_axis_mod::register_direction", &
+            "axis_direction should be 1 or -1", FATAL)
+   end select
+end subroutine
+
+
+
+!> \brief Return true if the metatada is already written for this
+!! axis for the given file.
+logical function is_metadata_written (me,fobj) result(written)
+    class (diag_axis_type), intent(in)  :: me
+    class(FmsNetcdfFile_t), intent(inout)   :: fobj
+    !!TODO: fill in body
+    written  = .false.
+end function is_metadata_written
+
+!> \brief Set the metadata_written_field for the given axis-file combo
+!!   in the input
+subroutine  set_metadata_written (me,fobj, written)
+    class (diag_axis_type), intent(inout)   :: me
+    class(FmsNetcdfFile_t),  intent(in) :: fobj
+    logical, intent(in)                 :: written
+    !!TODO: fill in body
+end subroutine set_metadata_written
+
 
 end module fms_diag_axis_mod

@@ -6,20 +6,21 @@ module fms_diag_manager2_mod
 !! listed here, please contact the developer in charge of diag_manager.
 !!
 !!
-use fms_diag_data_mod, only: diag_files_type, diag_fields_type
-use fms_diag_data_mod, only: monthly, daily, diurnal, yearly, no_diag_averaging, instantaneous, &
+use fms_diag_table_mod, only: diag_files_type, diag_fields_type
+use fms_diag_util_mod, only: monthly, daily, diurnal, yearly, no_diag_averaging, instantaneous, &
      three_hourly, six_hourly, r8, r4, i8, i4, string
-use fms_diag_data_mod, only: diag_null, diag_not_found, diag_not_registered, diag_registered_id
-use fms_diag_data_mod, only: diag_error,fatal,note,warning
+use fms_diag_util_mod, only: diag_null, diag_not_found, diag_not_registered, diag_registered_id
+use fms_diag_util_mod, only: diag_error,fatal,note,warning
 
 use fms_diag_concur_mod, only: diag_comm_init, fms_write_diag_comm, fms_diag_comm_type
 use fms_diag_table_mod !get_diag_table_field
 use fms_diag_register_mod
 use fms_diag_object_mod, only: operator (>),operator (<),operator (>=),&
                                operator (<=),operator (==),operator (.ne.)
-use fms_diag_object_mod, only: fms_diag_object_scalar, fms_diag_object_1d, &
-                               fms_diag_object_2d, fms_diag_object_3d, fms_diag_object_4d, &
-                               fms_diag_object_5d
+use fms_diag_send_data_mod, only: fms_diag_object_scalar, fms_diag_object_1d, &
+                               fms_diag_object_2d, fms_diag_object_4d, &
+                               fms_diag_object_5d, fms_diag_object_3d
+
 use fms_diag_object_mod, only: fms_diag_object
 use fms_diag_send_data_mod, only: send_data
 
