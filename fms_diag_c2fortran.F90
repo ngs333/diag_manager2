@@ -1,4 +1,4 @@
-module fms_diag_c2fortran_mod
+module fms_diag_c2fortran_mod 
 use iso_c_binding
 
 contains

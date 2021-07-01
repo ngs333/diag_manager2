@@ -1,7 +1,7 @@
 module fms_diag_write_data_mod
 
 use fms_diag_data_mod, only: fms_io_obj !!TODO: Temporary
-use fms_diag_data_mod,  only: diag_null, diag_error, fatal, note, warning
+use fms_diag_util_mod,  only: diag_null, diag_error, fatal, note, warning
 use fms_diag_object_mod, only: fms_diag_object, fms_diag_object_3d
 
 use fms_diag_axis_mod, only: diag_axis_type

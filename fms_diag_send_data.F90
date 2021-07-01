@@ -3,7 +3,7 @@ module fms_diag_send_data_mod
 use fms_diag_averaging_mod, only: get_average, alloc_subarray
 use fms_diag_util_mod,  only: diag_null, diag_error, fatal, note, warning
 use fms_diag_object_mod
-use fms2_io_mod,            only: open_file, close_file, write_data, FmsNetcdfFile_t
+use fms2_io_mod,         only: open_file, close_file, write_data, FmsNetcdfFile_t
 use fms_diag_axis_mod
 !!use fms_diag_axis_mod,   only: register  TODO:
 
@@ -321,7 +321,7 @@ subroutine send_data_3d(diag_obj, time, is_in, js_in, ks_in, mask, &
     character(len=*), parameter :: metadata_name = "metadata" !! TODO: Settle on an enum file - no magic nums.
 
     if ( diag_obj%is_static()  .eqv. .true. ) then
-        call send_data_3d(diag_obj, time, is_in, js_in, ks_in, mask, &
+        call send_data_3d_static(diag_obj, time, is_in, js_in, ks_in, mask, &
                          rmask, ie_in, je_in, ke_in, weight, err_msg)
         return
     endif

@@ -338,7 +338,7 @@ subroutine register_diag_axis(this, fobj, varname)
             call register_direction(this, fptr)
             call write_data(fptr, this%aname, this%adata(istart:iend) )
         class default
-            call diag_eror("register_diag_axis", &
+            call diag_error("register_diag_axis", &
                 "The file object is not the right type. It must be FmsNetcdfDomainFile_t or "//&
                 "FmsNetcdfFile_t for a X or Y axis, ", FATAL)
         end select
@@ -358,7 +358,7 @@ subroutine write_diag_axis_metadata(me, fobj, varname)
     !! TODO
     !! Note: Original function in diag_output.FO:write_axis_meta had select over attribute%type
     DO i = 1, size(me%attributes)
-        !!call register_variable_attribute(fileob, varname,TRIM(attributes(i))  , att_str(1:att_len))
+        !!call register_variable_attribute(fobj, varname,TRIM(attributes(i))  , att_str(1:att_len))
     end do
 end subroutine write_diag_axis_metadata
 
@@ -385,14 +385,14 @@ subroutine register_direction(this, fobj)
  class(FmsNetcdfFile_t), intent(inout)  :: fobj
 
   select case (this%direction)
-    case (1)
-        call register_variable_attribute(fobj, this%aname, "positive", "up")
-    case (-1)
-        call register_variable_attribute(fobj, this%aname, "positive", "down")
-    case default
-        call diag_error("fns_diag_axis_mod::register_direction", &
-            "axis_direction should be 1 or -1", FATAL)
-   end select
+  case (1)
+     call register_variable_attribute(fobj, this%aname, "positive", "up")
+  case (-1)
+     call register_variable_attribute(fobj, this%aname, "positive", "down")
+  case default
+     call diag_error("fns_diag_axis_mod::register_direction", &
+          "axis_direction should be 1 or -1", FATAL)
+  end select
 end subroutine
 
 

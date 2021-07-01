@@ -93,8 +93,8 @@ subroutine diag_comm_split (diag_comm, diag_pes, parent_comm)
      diag_comm_exist = .false.
      return
  endif
-!> Find the group
- call MPI_COMM_GET_ATTR(COMM,MPI_APPNUM,local_group,local_flag,merr)
+!> Find the group !!TODO:
+!! call MPI_COMM_GET_ATTR(COMM,MPI_APPNUM,local_group,local_flag,merr)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !> Split a new communicator as mycom
  call MPI_COMM_SPLIT(COMM, local_group, 0, mycomm, merr)
